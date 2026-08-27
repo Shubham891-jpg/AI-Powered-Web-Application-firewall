@@ -1,0 +1,128 @@
+services:
+  # 1. Protected Target Demo Application (Upstream Web App)
+  protected-demo-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.demo
+    container_name: ai_waf_protected_demo_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - waf-network
+
+  # 2. PostgreSQL 16 Database for Security Events & Rules
+  postgres:
+    image: postgres:16-alpine
+    container_name: ai_waf_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-waf_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-waf_secure_password_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_waf}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-waf_user} -d ${POSTGRES_DB:-ai_waf}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - waf-network
+
+  # 3. Redis 7 for Sliding-Window Rate Limiting & Transient State
+  redis:
+    image: redis:7-alpine
+    container_name: ai_waf_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - waf-network
+
+  # 4. AI-WAF Gateway & Reverse Proxy (FastAPI Core)
+  waf-backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: ai_waf_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=development
+      - WAF_HOST=0.0.0.0
+      - WAF_PORT=8000
+      - UPSTREAM_URL=http://protected-demo-app:3000
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-waf_user}:${POSTGRES_PASSWORD:-waf_secure_password_change_me}@postgres:5432/${POSTGRES_DB:-ai_waf}
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOW_THRESHOLD=${ALLOW_THRESHOLD:-29}
+      - FLAG_THRESHOLD=${FLAG_THRESHOLD:-69}
+      - BLOCK_THRESHOLD=${BLOCK_THRESHOLD:-70}
+      - DETECTION_MODE=${DETECTION_MODE:-BLOCK}
+      - RATE_LIMIT_REQUESTS=100
+      - RATE_LIMIT_WINDOW_SECONDS=60
+      - MAX_REQUEST_BODY_SIZE=10485760
+      - REQUEST_TIMEOUT_SECONDS=10.0
+    depends_on:
+      protected-demo-app:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - waf-network
+
+  # 5. React Security Analytics Dashboard
+  waf-frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: ai_waf_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - waf-backend
+    networks:
+      - waf-network
+
+  # 6. Edge Nginx Reverse Proxy & Unified Gateway
+  nginx:
+    image: nginx:alpine
+    container_name: ai_waf_nginx_edge
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - waf-frontend
+      - waf-backend
+    networks:
+      - waf-network
+
+networks:
+  waf-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local

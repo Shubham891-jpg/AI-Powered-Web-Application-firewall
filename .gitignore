@@ -1,0 +1,60 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Node.js
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database & Persistent storage
+*.sqlite3
+*.db
+pgdata/
+redisdata/
+
+# Environment files & secrets
+.env
+!.env.example
+.env.*.local
+
+# ML artifacts & checkpoints
+ml/models/*.joblib
+ml/models/*.pkl
+ml/models/*.onnx
+!ml/models/.gitkeep
+ml/data/raw/*
+!ml/data/raw/README.md
+ml/data/processed/*
+!ml/data/processed/README.md
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+logs/
+
+# Operating System / IDEs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
