@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     ML_MODEL_PATH: str = "ml/models/waf_classifier_v1.joblib"
     ML_VECTORIZER_PATH: str = "ml/models/tfidf_vectorizer_v1.joblib"
     ML_METADATA_PATH: str = "ml/models/metadata_v1.json"
-    ML_ENABLED: bool = False
+    ML_ENABLED: bool = True
 
     @field_validator("BLOCK_THRESHOLD")
     @classmethod

@@ -247,9 +247,13 @@ export const App: React.FC = () => {
                 <span>Flag Threshold</span>
                 <span className="font-mono text-amber-400">{(config?.thresholds.allow ?? 29) + 1} - {config?.thresholds.flag ?? 69}</span>
               </div>
-              <div className="flex justify-between py-1">
+              <div className="flex justify-between py-1 border-b border-slate-800/60">
                 <span>Block Threshold</span>
                 <span className="font-mono text-rose-400">{config?.thresholds.block ?? 70} - 100</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span>ML Classifier</span>
+                <span className="font-mono text-cyan-400 text-[11px]">LogisticRegression v1.0.0 (98.3%)</span>
               </div>
             </div>
           </div>

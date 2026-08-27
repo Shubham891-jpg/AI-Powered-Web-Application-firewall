@@ -70,7 +70,9 @@ async def readiness_probe():
 
     # Check Detection Engine
     from app.detection.detector import request_detector
+    from app.detection.ml.classifier import ml_classifier
     active_rules = request_detector.rules
+    ml_info = ml_classifier.get_info()
     detection_health = ServiceComponentHealth(
         name="detection_engine",
         status="healthy",
@@ -80,6 +82,7 @@ async def readiness_probe():
             "rules_loaded": len(active_rules),
             "active_rule_ids": [r.rule_id for r in active_rules],
             "ml_enabled": settings.ML_ENABLED,
+            "ml_model": ml_info,
             "thresholds": {
                 "allow": settings.ALLOW_THRESHOLD,
                 "flag": settings.FLAG_THRESHOLD,

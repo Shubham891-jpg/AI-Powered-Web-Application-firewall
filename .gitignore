@@ -37,10 +37,14 @@ ml/models/*.joblib
 ml/models/*.pkl
 ml/models/*.onnx
 !ml/models/.gitkeep
+!ml/models/*_v1.joblib
+!ml/models/*.json
 ml/data/raw/*
 !ml/data/raw/README.md
+!ml/data/raw/*.py
 ml/data/processed/*
 !ml/data/processed/README.md
+!ml/data/processed/dataset.csv
 
 # Testing & Coverage
 .pytest_cache/
