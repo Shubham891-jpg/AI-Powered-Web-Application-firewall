@@ -159,7 +159,7 @@ npm run dev
 - [x] **Phase 2**: HTTP Request Inspection Pipeline & Normalization.
 - [x] **Phase 3**: Rule Detection Engine (SQLi, XSS, RCE, Path Traversal).
 - [x] **Phase 4**: Supervised ML Pipeline (TF-IDF + Character n-grams + Logistic Regression).
-- [ ] **Phase 5**: Risk Scoring & Decision Engine.
+- [x] **Phase 5**: Risk Scoring & Decision Engine.
 - [ ] **Phase 6**: High-performance Async Reverse Proxy Gateway.
 - [ ] **Phase 7**: PostgreSQL Persistence & Security Event Storage.
 - [ ] **Phase 8**: Redis Sliding-Window Rate Limiting.

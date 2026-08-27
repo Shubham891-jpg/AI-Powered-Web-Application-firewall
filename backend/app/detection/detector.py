@@ -1,8 +1,10 @@
 """
-Unified Threat Detector Orchestrator for AI-WAF.
-Coordinates normalization, rule execution through RuleRegistry, ML classification, and risk evaluation.
+Unified Threat Detector Orchestrator for AI-WAF (Phase 5).
+Coordinates request normalization, multi-tier rule execution through RuleRegistry,
+supervised ML classification, and explainable risk evaluation through the Risk Engine.
 """
 
+import time
 from typing import Union
 from app.detection.preprocessing import (
     InspectedRequestContext,
@@ -15,13 +17,14 @@ from app.detection.rules.xss import XSSRule
 from app.detection.rules.command_injection import CommandInjectionRule
 from app.detection.rules.path_traversal import PathTraversalRule
 from app.detection.ml.classifier import ml_classifier
-from app.detection.risk_engine import risk_engine, DecisionResult
+from app.detection.risk_engine import risk_engine
+from app.detection.models import DecisionResult
 
 
 class RequestDetector:
     def __init__(self):
         self.registry = RuleRegistry()
-        # Register core detection rules
+        # Register core multi-tier detection rules
         self.registry.register(SQLInjectionRule())
         self.registry.register(XSSRule())
         self.registry.register(CommandInjectionRule())
@@ -32,33 +35,17 @@ class RequestDetector:
         return self.registry.get_all_active()
 
     def inspect_context(
-        self, context: InspectedRequestContext
+        self, context: InspectedRequestContext, request_id: str = "req-0000"
     ) -> tuple[DecisionResult, list[RuleResult], str]:
         """
         Inspects an entire InspectedRequestContext across all HTTP attack vectors:
-        Path, parameters, headers, and body.
+        Path, query parameters, headers, and body.
         """
+        t0 = time.perf_counter()
         matched_rules: list[RuleResult] = []
-        highest_rule_score = 0
-        primary_category = "NORMAL"
-        reasons: list[str] = []
-
-        # Heuristic anomalies from normalizer
-        if context.normalized.encoding_depth > 1:
-            reasons.append(
-                f"Suspicious nested URL encoding detected (recursion depth: {context.normalized.encoding_depth})"
-            )
-            highest_rule_score = max(highest_rule_score, 45)
-            primary_category = "SUSPICIOUS"
-
-        if context.normalized.has_null_bytes:
-            reasons.append("Dangerous null-byte (%00 / \\x00) injection attempt detected")
-            highest_rule_score = max(highest_rule_score, 75)
-            primary_category = "SUSPICIOUS"
-
         inspection_target = context.normalized.canonical_inspection_string
 
-        # Execute registered active rules
+        # 1. Execute registered active rules
         for rule in self.rules:
             result = rule.analyze(inspection_target)
             # If path traversal, also check raw path (e.g. %2e%2e%2f)
@@ -67,71 +54,73 @@ class RequestDetector:
 
             if result.matched:
                 matched_rules.append(result)
-                reasons.append(f"[{result.confidence.value}] {result.reason}")
-                if result.score > highest_rule_score:
-                    highest_rule_score = result.score
-                    primary_category = result.category
 
-        # Execute ML classification on the normalized string
+        # 2. Execute ML classification on canonical inspection string
         ml_class, ml_conf = ml_classifier.predict(inspection_target)
-        if ml_class != "NORMAL":
-            reasons.append(f"ML classified as {ml_class} with {ml_conf:.2f} confidence")
+        ml_info = ml_classifier.get_info()
 
+        total_latency = (time.perf_counter() - t0) * 1000.0
+
+        # 3. Evaluate through unified Risk Scoring Engine
         decision = risk_engine.evaluate(
-            rule_score=highest_rule_score,
-            rule_category=primary_category,
+            rule_results=matched_rules,
             ml_class=ml_class,
             ml_confidence=ml_conf,
-            reasons=reasons,
+            model_name=ml_info.get("model_name", "waf_classifier"),
+            model_version=ml_info.get("model_version", "1.0.0"),
+            vectorizer_version=ml_info.get("vectorizer_version", "1.0.0"),
+            ml_latency_ms=ml_classifier.last_inference_latency_ms,
+            request_id=request_id,
+            path=context.raw.path,
+            url_decode_depth=context.normalized.encoding_depth,
+            has_null_bytes=context.normalized.has_null_bytes,
+            has_unicode_anomalies=context.normalized.has_unicode_anomalies,
+            total_latency_ms=total_latency,
         )
 
         return decision, matched_rules, inspection_target
 
     def inspect(
-        self, target: Union[str, InspectedRequestContext]
+        self, target: Union[str, InspectedRequestContext], request_id: str = "req-0000"
     ) -> tuple[DecisionResult, list[RuleResult], str]:
         """
         Main inspection entry point.
         Supports both string payloads and complete InspectedRequestContext objects.
         """
         if isinstance(target, InspectedRequestContext):
-            return self.inspect_context(target)
+            return self.inspect_context(target, request_id=request_id)
 
         # Fallback string inspection
+        t0 = time.perf_counter()
         norm_result = normalize_string(target)
         normalized = norm_result.normalized
 
         matched_rules: list[RuleResult] = []
-        highest_rule_score = 0
-        primary_category = "NORMAL"
-        reasons: list[str] = []
-
-        if norm_result.is_multivalue_encoded:
-            reasons.append("Suspicious multi-layer URL encoding detected")
-            highest_rule_score = max(highest_rule_score, 45)
-            primary_category = "SUSPICIOUS"
-
         for rule in self.rules:
             result = rule.analyze(normalized)
             if not result.matched:
                 result = rule.analyze(target)
             if result.matched:
                 matched_rules.append(result)
-                reasons.append(f"[{result.confidence.value}] {result.reason}")
-                if result.score > highest_rule_score:
-                    highest_rule_score = result.score
-                    primary_category = result.category
 
         ml_class, ml_conf = ml_classifier.predict(normalized)
-        if ml_class != "NORMAL":
-            reasons.append(f"ML classified as {ml_class} with {ml_conf:.2f} confidence")
+        ml_info = ml_classifier.get_info()
+        total_latency = (time.perf_counter() - t0) * 1000.0
 
         decision = risk_engine.evaluate(
-            rule_score=highest_rule_score,
-            rule_category=primary_category,
+            rule_results=matched_rules,
             ml_class=ml_class,
             ml_confidence=ml_conf,
-            reasons=reasons,
+            model_name=ml_info.get("model_name", "waf_classifier"),
+            model_version=ml_info.get("model_version", "1.0.0"),
+            vectorizer_version=ml_info.get("vectorizer_version", "1.0.0"),
+            ml_latency_ms=ml_classifier.last_inference_latency_ms,
+            request_id=request_id,
+            path="/",
+            url_decode_depth=norm_result.depth,
+            has_null_bytes=norm_result.has_null_bytes,
+            has_unicode_anomalies=norm_result.has_unicode_anomalies,
+            total_latency_ms=total_latency,
         )
 
         return decision, matched_rules, normalized

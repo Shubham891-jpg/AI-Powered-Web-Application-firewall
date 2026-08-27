@@ -33,6 +33,7 @@ class RuleResult(BaseModel):
     category: str = "NORMAL"
     score: int = Field(default=0, ge=0, le=100)
     rule_id: str
+    rule_name: str = ""
     confidence: RuleConfidence = RuleConfidence.NO_EVIDENCE
     reason: str = ""
     indicators: list[str] = Field(default_factory=list)

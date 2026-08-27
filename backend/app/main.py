@@ -93,7 +93,7 @@ async def security_and_inspection_middleware(request: Request, call_next):
     context = RequestNormalizer.create_context(raw_request)
 
     # 3. Execute multi-vector threat detection
-    decision, matched_rules, normalized_target = request_detector.inspect(context)
+    decision, matched_rules, normalized_target = request_detector.inspect(context, request_id=request_id)
     latency_ms = (time.perf_counter() - start_time) * 1000.0
 
     # 4. Log security event if flagged or blocked
@@ -110,6 +110,7 @@ async def security_and_inspection_middleware(request: Request, call_next):
             details={
                 "reasons": decision.reasons,
                 "matched_rules": [r.model_dump() for r in matched_rules],
+                "explanation": decision.explanation.model_dump() if decision.explanation else None,
                 "encoding_depth": context.normalized.encoding_depth,
                 "has_null_bytes": context.normalized.has_null_bytes,
                 "transformations": context.normalized.transformations,

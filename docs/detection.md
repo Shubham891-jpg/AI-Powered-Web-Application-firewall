@@ -127,5 +127,78 @@ The training dataset (`ml/data/processed/dataset.csv`) incorporates standard CSI
   - Vectorizer: `ml/models/tfidf_vectorizer_v1.joblib`
   - Metadata: `ml/models/metadata_v1.json` (stores version `1.0.0`, training timestamp, vocabulary size, and confusion matrix).
 
+---
+
+## 6. Detection Engine Fusion & Risk Scoring (Phase 5)
+
+The AI-WAF combines deterministic rule-based matching, machine-learning classification, and contextual request heuristics into a unified risk score.
+
+### 6.1 Mathematical Fusion Formula
+$$R_{\text{composite}} = \min\left(100, \max\left(R_{\text{override}}, \text{round}\left(w_{\text{rule}} \cdot S_{\text{rule}} + w_{\text{ml}} \cdot S_{\text{ml}} + \text{SynergyBonus} + \sum P_{\text{context}}\right)\right)\right)$$
+
+Where:
+- $S_{\text{rule}}$: Maximum score among matched rules ($0 - 100$).
+- $S_{\text{ml}}$: Machine learning threat score. If ML predicts a malicious class, $S_{\text{ml}} = \text{confidence} \times 100$. If `NORMAL`, $S_{\text{ml}} = \max(0, (1 - \text{confidence}) \times 20)$.
+- $w_{\text{rule}}$: Rule weight (default: $0.60$).
+- $w_{\text{ml}}$: ML weight (default: $0.40$).
+- **High-Confidence Rule Override ($R_{\text{override}}$)**: If any active rule reports `HIGH_CONFIDENCE` ($\ge 80$), $R_{\text{override}} = \max(S_{\text{rule}}, 85)$. Confirmed weaponized exploits are guaranteed to trigger a `BLOCK` regardless of ML confidence.
+- **Corroboration Synergy**: $+15$ bonus points applied when both rules ($S_{\text{rule}} \ge 50$) and ML ($\text{conf} \ge 0.40$) confirm an active attack vector, driving the composite risk score into the $90-100$ range.
+- **Contextual Threat Penalties ($\sum P_{\text{context}}$)**:
+  - `SENSITIVE_PATH_ACCESS`: $+15$ points for probing `/admin`, `/.env`, `/auth`, `/login`, etc.
+  - `NESTED_ENCODING_EVASION`: $+15$ points per recursion pass above depth 1.
+  - `NULL_BYTE_INJECTION`: $+25$ points for `%00` or `\x00` presence.
+  - `UNICODE_HOMOGLYPH_ANOMALY`: $+10$ points for fullwidth or homoglyph character substitutions.
+
+### 6.2 Decision Thresholds & Modes
+- **Configurable Boundaries**:
+  - `0 - 29`: **`ALLOW`** (Benign traffic passes cleanly)
+  - `30 - 69`: **`FLAG`** (Suspicious traffic allowed but logged with telemetry headers)
+  - `70 - 100`: **`BLOCK`** (Malicious traffic terminated with HTTP 403)
+- **Operational Enforcement Modes**:
+  - `BLOCK`: Standard enforcement mode. Scores $\ge 70$ return HTTP 403.
+  - `FLAG_ONLY`: Staging / dry-run mode. Blocks are downgraded to `FLAG` for policy tuning.
+  - `MONITOR`: Silent observation mode. All requests pass through with risk scoring recorded.
+
+### 6.3 Explainability Payload (`InspectionExplanation`)
+Every inspection produces a structured audit record per Section 20 of the specification:
+```json
+{
+  "request_id": "req-98e3b1c4",
+  "timestamp": "2026-08-28T05:15:00.000Z",
+  "decision": "BLOCK",
+  "risk_score": 95,
+  "category": "SQL_INJECTION",
+  "rule_matches": [
+    {
+      "rule_id": "SQLI-001",
+      "rule_name": "SQL Injection Detector",
+      "category": "SQL_INJECTION",
+      "confidence": "HIGH_CONFIDENCE",
+      "score": 85,
+      "reason": "Detected structural UNION ... SELECT statement clause",
+      "indicators": ["UNION SELECT"]
+    }
+  ],
+  "ml_prediction": {
+    "predicted_class": "SQL_INJECTION",
+    "confidence": 0.924,
+    "model_name": "waf_classifier",
+    "model_version": "1.0.0",
+    "vectorizer_version": "1.0.0",
+    "latency_ms": 0.58
+  },
+  "contextual_penalties": [
+    {
+      "factor": "NESTED_ENCODING_EVASION",
+      "penalty_points": 15,
+      "reason": "Nested URL encoding detected with recursion depth of 2"
+    }
+  ],
+  "primary_reason": "[SQLI-001 / HIGH_CONFIDENCE] Detected structural UNION ... SELECT statement clause",
+  "latency_ms": 1.15
+}
+```
+
+
 
 

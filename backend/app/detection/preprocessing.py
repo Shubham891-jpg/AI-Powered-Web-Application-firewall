@@ -209,8 +209,12 @@ class RequestNormalizer:
         canonical_path = cls.canonicalize_path(raw_req.path)
 
         # Normalize Query Parameters
+        raw_queries = dict(raw_req.query_params)
+        if not raw_queries and raw_req.raw_query:
+            raw_queries = urllib.parse.parse_qs(raw_req.raw_query, keep_blank_values=True)
+
         norm_query_params: dict[str, list[str]] = {}
-        for key, values in raw_req.query_params.items():
+        for key, values in raw_queries.items():
             norm_k, k_depth, k_null, k_uni, k_trans = cls.normalize_text(key)
             norm_vals: list[str] = []
             for v in values:
