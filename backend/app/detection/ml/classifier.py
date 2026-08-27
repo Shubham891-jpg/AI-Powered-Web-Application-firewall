@@ -98,3 +98,9 @@ class WAFClassifier:
 
 # Singleton classifier
 ml_classifier = WAFClassifier()
+
+
+def initialize_ml_models():
+    """Initializes and loads ML models at application startup."""
+    ml_classifier.load()
+

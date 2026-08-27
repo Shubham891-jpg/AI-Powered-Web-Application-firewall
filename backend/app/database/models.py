@@ -71,9 +71,15 @@ class SecurityEvent(Base):
     action = Column(String(20), nullable=False, index=True)           # ALLOW, FLAG, BLOCK
     matched_rules = Column(JSON_TYPE, default=list)
 
+    # Explainability & Telemetry Details (Phase 5 & 7)
+    primary_reason = Column(Text, nullable=True)
+    ml_prediction = Column(JSON_TYPE, default=dict)
+    contextual_penalties = Column(JSON_TYPE, default=list)
+    explanation_json = Column(JSON_TYPE, default=dict)
+
     model_version = Column(String(50), nullable=True)
-    response_status = Column(Integer, nullable=False)
-    processing_latency_ms = Column(Float, nullable=False)
+    response_status = Column(Integer, default=200, nullable=False)
+    processing_latency_ms = Column(Float, default=0.0, nullable=False)
 
     # Analyst Feedback for Model Retraining
     review_status = Column(String(20), default="UNREVIEWED", nullable=False) # UNREVIEWED, TRUE_POSITIVE, FALSE_POSITIVE

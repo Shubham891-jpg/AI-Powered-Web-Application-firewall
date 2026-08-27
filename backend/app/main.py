@@ -13,23 +13,29 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.api.health import router as health_router
 from app.api.routes import api_v1_router
-from app.detection.ml.model_loader import initialize_ml_models
-from app.proxy.upstream import close_http_client
-from app.rate_limit.limiter import close_redis
+from app.database.database import async_session_factory
+from app.database.models import SecurityEvent
+from app.detection.detector import request_detector
+from app.detection.ml.classifier import initialize_ml_models
+from app.logging.security_logger import security_logger
+from app.logging.event_queue import security_event_queue
 from app.proxy.proxy import reverse_proxy_handler
 from app.proxy.response_handler import create_blocked_response
-from app.detection.detector import request_detector
-from app.detection.preprocessing import RequestParser, RequestNormalizer
-from app.logging.security_logger import security_logger
+from app.proxy.upstream import close_http_client
+from app.rate_limit.limiter import close_redis
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for clean startup and resource cleanup."""
-    # Startup: Load ML models
+    # Startup: Load ML models & start background event persistence worker
     initialize_ml_models()
+    if async_session_factory:
+        await security_event_queue.start(async_session_factory)
     yield
-    # Shutdown: Clean up connection pools
+    # Shutdown: Clean up connection pools & flush background persistence queue
+    if async_session_factory:
+        await security_event_queue.stop(async_session_factory)
     await close_http_client()
     await close_redis()
 
@@ -119,6 +125,33 @@ async def security_and_inspection_middleware(request: Request, call_next):
                 "raw_query": raw_request.raw_query,
             },
         )
+
+        # Enqueue for non-blocking asynchronous PostgreSQL persistence (Phase 7)
+        try:
+            db_event = SecurityEvent(
+                request_id=request_id,
+                client_ip=client_ip,
+                http_method=request.method,
+                path=path,
+                query_params=raw_request.query_params,
+                headers={k: v for k, v in raw_request.headers.items() if k.lower() not in ("authorization", "cookie")},
+                raw_payload=raw_request.body_text[:1000] if raw_request.body_text else "",
+                normalized_payload=context.normalized.body_text[:1000] if context.normalized.body_text else "",
+                attack_category=decision.classification,
+                risk_score=decision.risk_score,
+                ml_confidence=decision.explanation.ml_prediction.confidence if decision.explanation and decision.explanation.ml_prediction else None,
+                action=decision.action,
+                matched_rules=[r.model_dump() for r in matched_rules],
+                primary_reason=decision.explanation.primary_reason if decision.explanation else "",
+                ml_prediction=decision.explanation.ml_prediction.model_dump() if decision.explanation and decision.explanation.ml_prediction else {},
+                contextual_penalties=[p.model_dump() for p in decision.explanation.contextual_penalties] if decision.explanation else [],
+                explanation_json=decision.explanation.model_dump() if decision.explanation else {},
+                response_status=403 if decision.action == "BLOCK" else 200,
+                processing_latency_ms=latency_ms,
+            )
+            security_event_queue.enqueue(db_event)
+        except Exception:
+            pass
 
     # 5. Terminate malicious requests with uniform HTTP 403
     if decision.action == "BLOCK":
