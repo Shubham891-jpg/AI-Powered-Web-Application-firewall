@@ -122,10 +122,15 @@ async def security_and_inspection_middleware(request: Request, call_next):
 
     # 5. Terminate malicious requests with uniform HTTP 403
     if decision.action == "BLOCK":
-        return create_blocked_response(request_id=request_id, status_code=403)
+        return create_blocked_response(
+            request_id=request_id,
+            risk_score=decision.risk_score,
+            category=decision.classification,
+            status_code=403,
+        )
 
     # 6. Transparently forward permitted requests to the upstream protected app
-    return await reverse_proxy_handler(request)
+    return await reverse_proxy_handler(request, decision=decision, latency_ms=latency_ms)
 
 
 # Mount diagnostic and API routes

@@ -63,3 +63,40 @@ flowchart TD
 6. **Persistence & Upstream Proxy**:
    - Asynchronously records security events into PostgreSQL.
    - If allowed/flagged, streams request to configured upstream destination using connection-pooled HTTP client (`httpx`).
+
+---
+
+## 7. High-Performance Reverse Proxy Gateway (Phase 6)
+
+The reverse proxy gateway brokers traffic between internet clients and the protected web application:
+
+### 7.1 Multi-Method Support
+- Transparently proxies `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, and `OPTIONS` maintaining exact request methods and bodies.
+
+### 7.2 RFC 7230 Hop-by-Hop Sanitization
+- Strictly removes hop-by-hop headers per RFC 7230:
+  `Connection`, `Keep-Alive`, `Proxy-Authenticate`, `Proxy-Authorization`, `TE`, `Trailers`, `Transfer-Encoding`, and `Upgrade`.
+- Preserves end-to-end headers (`Cookie`, `Authorization`, `Content-Type`, `Accept`, `User-Agent`).
+
+### 7.3 Proxy Tracking & Telemetry Injection
+- **Upstream Forwarding Headers**:
+  - `X-Forwarded-For`: Appends client IP to the existing chain.
+  - `X-Forwarded-Proto`: Records incoming scheme (`http` or `https`).
+  - `X-Forwarded-Host`: Preserves original requested host.
+  - `X-Request-ID`: Propagates correlation identifier.
+- **Downstream Telemetry Injection**:
+  - `X-WAF-Action`: Enforcement action (`ALLOW` or `FLAG`).
+  - `X-WAF-Risk-Score`: Composite risk score ($0 - 100$).
+  - `X-WAF-Category`: Threat classification category.
+  - `X-WAF-Latency`: Total inspection and processing latency.
+
+### 7.4 Request & Response Streaming
+- Leverages `StreamingResponse(upstream_resp.aiter_raw(), ...)` with `BackgroundTask(upstream_resp.aclose)` to forward upstream chunked transfers and large files without unbounded memory buffering.
+
+### 7.5 Connection Pooling & Resilient Error Handling
+- Persistent `httpx.AsyncClient` with pooled keepalive connections (up to 200 connections, 50 keepalive, 30s expiry).
+- **Error Responses**:
+  - Upstream unreachable (`httpx.ConnectError`): HTTP 502 Bad Gateway with structured JSON error.
+  - Upstream timeout (`httpx.ReadTimeout`): HTTP 504 Gateway Timeout with structured JSON error.
+  - Body exceeds `MAX_REQUEST_BODY_SIZE`: HTTP 413 Payload Too Large.
+
