@@ -162,7 +162,7 @@ npm run dev
 - [x] **Phase 5**: Risk Scoring & Decision Engine.
 - [x] **Phase 6**: High-performance Async Reverse Proxy Gateway.
 - [x] **Phase 7**: PostgreSQL Persistence & Security Event Storage.
-- [ ] **Phase 8**: Redis Sliding-Window Rate Limiting.
+- [x] **Phase 8**: Redis Sliding-Window Rate Limiting.
 - [ ] **Phase 9**: Interactive Real-Time Cyber Monitoring Dashboard.
 - [ ] **Phase 10**: Security Hardening, SSRF Protection, and Credential Redaction.
 - [ ] **Phase 11**: End-to-End Automated Testing & Security Verification.

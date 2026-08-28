@@ -100,3 +100,34 @@ The reverse proxy gateway brokers traffic between internet clients and the prote
   - Upstream timeout (`httpx.ReadTimeout`): HTTP 504 Gateway Timeout with structured JSON error.
   - Body exceeds `MAX_REQUEST_BODY_SIZE`: HTTP 413 Payload Too Large.
 
+---
+
+## 8. Redis Sliding-Window Rate Limiting & Burst Protection (Phase 8)
+
+### 8.1 Two-Tier Architecture
+1. **Standard Sliding-Window**: Evaluates sliding-window request volume across a configurable time window (default: 100 req / 60s) via Redis sorted sets.
+2. **Instantaneous Burst Protection**: Evaluates high-frequency spikes within a micro-window (default: 25 req / 2.0s) to instantly throttle automated Layer 7 flood attacks and credential stuffing tools before normal windows elapse.
+
+### 8.2 Atomic Sorted Set Algorithm
+```redis
+ZREMRANGEBYSCORE waf:ratelimit:<ip> 0 <window_start>
+ZADD waf:ratelimit:<ip> <timestamp> <timestamp>
+ZCARD waf:ratelimit:<ip>
+ZCOUNT waf:ratelimit:<ip> <burst_start> +inf
+EXPIRE waf:ratelimit:<ip> <ttl>
+```
+
+### 8.3 Circuit-Breaker In-Memory Fallback
+- Automatic failover: If Redis is offline or network-partitioned, a thread-safe local in-memory sliding window cache activates with zero latency penalty.
+- Auto-recovery: Re-tests Redis connectivity after a cooldown period.
+
+### 8.4 Standard HTTP 429 Responses
+- **Payload**: `{"error": "Too Many Requests", "request_id": "...", "message": "...", "retry_after": ...}`
+- **Headers**:
+  - `Retry-After: <seconds>`
+  - `X-RateLimit-Limit: <limit>`
+  - `X-RateLimit-Remaining: 0`
+  - `X-RateLimit-Reset: <reset_timestamp>`
+  - `X-WAF-Action: RATE_LIMITED`
+
+

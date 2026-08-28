@@ -22,7 +22,7 @@ from app.logging.event_queue import security_event_queue
 from app.proxy.proxy import reverse_proxy_handler
 from app.proxy.response_handler import create_blocked_response
 from app.proxy.upstream import close_http_client
-from app.rate_limit.limiter import close_redis
+from app.rate_limit.limiter import close_redis, rate_limiter, create_rate_limited_response
 
 
 @asynccontextmanager
@@ -91,6 +91,27 @@ async def security_and_inspection_middleware(request: Request, call_next):
         return response
 
     client_ip = request.client.host if request.client else "unknown"
+
+    # 0. Sliding-Window Rate Limit Check (Phase 8)
+    rate_res = await rate_limiter.check_rate_limit(client_ip)
+    if not rate_res.allowed:
+        security_logger.log_event(
+            request_id=request_id,
+            client_ip=client_ip,
+            method=request.method,
+            path=path,
+            attack_category="RATE_LIMIT_EXCEEDED",
+            risk_score=85 if rate_res.is_burst else 70,
+            action="BLOCK",
+            latency_ms=(time.perf_counter() - start_time) * 1000.0,
+            details={
+                "is_burst": rate_res.is_burst,
+                "current_count": rate_res.current_count,
+                "limit": rate_res.limit,
+                "retry_after": rate_res.retry_after,
+            },
+        )
+        return create_rate_limited_response(request_id, rate_res)
 
     # 1. Parse raw request
     raw_request = await RequestParser.parse_request(request, request_id, client_ip)
