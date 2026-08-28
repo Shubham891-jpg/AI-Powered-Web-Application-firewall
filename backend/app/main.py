@@ -23,6 +23,8 @@ from app.proxy.proxy import reverse_proxy_handler
 from app.proxy.response_handler import create_blocked_response
 from app.proxy.upstream import close_http_client
 from app.rate_limit.limiter import close_redis, rate_limiter, create_rate_limited_response
+from app.security.redaction import redact_headers, redact_payload_text
+from app.security.headers import apply_defensive_headers
 
 
 @asynccontextmanager
@@ -74,13 +76,25 @@ async def security_and_inspection_middleware(request: Request, call_next):
     request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
     start_time = time.perf_counter()
 
+    # Enforce URI length limit
+    full_url = str(request.url)
+    if len(full_url) > settings.MAX_URI_LENGTH or len(request.url.path) > settings.MAX_URI_LENGTH:
+        resp_414 = JSONResponse(
+            status_code=414,
+            content={"error": "URI Too Long", "request_id": request_id},
+        )
+        resp_414.headers["X-Request-ID"] = request_id
+        return apply_defensive_headers(resp_414)
+
     # Enforce header size limit
     header_size = sum(len(k) + len(v) for k, v in request.headers.items())
     if header_size > settings.MAX_HEADER_SIZE:
-        return JSONResponse(
+        resp_431 = JSONResponse(
             status_code=431,
             content={"error": "Request Header Fields Too Large", "request_id": request_id},
         )
+        resp_431.headers["X-Request-ID"] = request_id
+        return apply_defensive_headers(resp_431)
 
     path = request.url.path
 
@@ -88,7 +102,7 @@ async def security_and_inspection_middleware(request: Request, call_next):
     if path == "/health" or path.startswith("/api/"):
         response: Response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
-        return response
+        return apply_defensive_headers(response)
 
     client_ip = request.client.host if request.client else "unknown"
 
@@ -155,9 +169,9 @@ async def security_and_inspection_middleware(request: Request, call_next):
                 http_method=request.method,
                 path=path,
                 query_params=raw_request.query_params,
-                headers={k: v for k, v in raw_request.headers.items() if k.lower() not in ("authorization", "cookie")},
-                raw_payload=raw_request.body_text[:1000] if raw_request.body_text else "",
-                normalized_payload=context.normalized.body_text[:1000] if context.normalized.body_text else "",
+                headers=redact_headers(raw_request.headers),
+                raw_payload=redact_payload_text(raw_request.body_text[:1000] if raw_request.body_text else ""),
+                normalized_payload=redact_payload_text(context.normalized.body_text[:1000] if context.normalized.body_text else ""),
                 attack_category=decision.classification,
                 risk_score=decision.risk_score,
                 ml_confidence=decision.explanation.ml_prediction.confidence if decision.explanation and decision.explanation.ml_prediction else None,
@@ -176,15 +190,17 @@ async def security_and_inspection_middleware(request: Request, call_next):
 
     # 5. Terminate malicious requests with uniform HTTP 403
     if decision.action == "BLOCK":
-        return create_blocked_response(
+        blocked_resp = create_blocked_response(
             request_id=request_id,
             risk_score=decision.risk_score,
             category=decision.classification,
             status_code=403,
         )
+        return apply_defensive_headers(blocked_resp)
 
     # 6. Transparently forward permitted requests to the upstream protected app
-    return await reverse_proxy_handler(request, decision=decision, latency_ms=latency_ms)
+    proxy_resp = await reverse_proxy_handler(request, decision=decision, latency_ms=latency_ms)
+    return apply_defensive_headers(proxy_resp)
 
 
 # Mount diagnostic and API routes

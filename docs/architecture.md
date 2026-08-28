@@ -153,5 +153,37 @@ The frontend is built with React, Vite, TypeScript, and TailwindCSS, communicati
 4. **Interactive Attack Simulator & Burst Flooder**:
    - Direct live attack probe launcher equipped with pre-configured attack vectors (SQLi, XSS, RCE, Traversal, Normal, Burst flood) showing real-time response telemetry (`X-WAF-Action`, `X-WAF-Risk-Score`, latency).
 
+---
+
+## 10. Security Hardening, SSRF Protection, and Credential Redaction (Phase 10)
+
+### 10.1 Admin Authentication Guard
+- Management and configuration modification routes are protected via API Key authentication (`X-API-Key` or Bearer header).
+- Validated via dependency `verify_admin_key`, rejecting unauthorized access with HTTP 401 Unauthorized.
+
+### 10.2 Server-Side Request Forgery (SSRF) Defense
+- Enforces strict network boundaries on upstream target URLs:
+  - Blocks cloud instance metadata endpoints (`169.254.169.254/32`).
+  - Blocks link-local subnets (`169.254.0.0/16`), multicast, and reserved IP spaces.
+  - Restricts internal RFC 1918 private subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`) unless explicitly authorized in `ALLOWED_UPSTREAM_HOSTS`.
+
+### 10.3 Request Boundary & Size Guards
+- **URI Length Guard**: Paths or URLs exceeding `MAX_URI_LENGTH` (2,048 characters) are terminated immediately with HTTP 414 URI Too Long.
+- **Header Size Guard**: Cumulative header bytes exceeding `MAX_HEADER_SIZE` (16 KB) trigger HTTP 431 Request Header Fields Too Large.
+- **Payload Guard**: Bodies exceeding `MAX_REQUEST_BODY_SIZE` (10 MB) are dropped with HTTP 413 Payload Too Large.
+
+### 10.4 Sensitive Data & Credential Redaction
+- Header scrubbing masks `Authorization`, `Proxy-Authorization`, `Cookie`, `Set-Cookie`, `X-API-Key`, and `X-Auth-Token` as `[REDACTED]`.
+- Payload sanitization scans JSON keys (`password`, `token`, `secret`, `api_key`, `credit_card`, `ssn`) and regex matches, masking secrets before persisting security audit records into PostgreSQL.
+
+### 10.5 Browser Defense-in-Depth Response Headers
+All downstream HTTP responses are stamped with security headers:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: geolocation=(), microphone=(), camera=()`
+
+
 
 

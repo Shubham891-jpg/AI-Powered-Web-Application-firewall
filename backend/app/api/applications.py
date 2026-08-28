@@ -72,9 +72,15 @@ async def list_applications():
     return _demo_apps
 
 
+from app.security.ssrf import validate_upstream_url_safety, SSRFException
+
 @router.post("")
 async def create_application(payload: ApplicationCreate):
-    """Registers a new upstream web application."""
+    """Registers a new upstream web application with SSRF validation."""
+    try:
+        validate_upstream_url_safety(payload.upstream_url)
+    except SSRFException as e:
+        raise HTTPException(status_code=400, detail=str(e))
     if async_session_factory is not None:
         try:
             async with async_session_factory() as session:
@@ -114,6 +120,12 @@ async def update_application(app_id: str, payload: ApplicationUpdate):
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields provided for update")
+
+    if payload.upstream_url:
+        try:
+            validate_upstream_url_safety(payload.upstream_url)
+        except SSRFException as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     if async_session_factory is not None:
         try:

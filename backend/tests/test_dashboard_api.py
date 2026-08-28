@@ -89,7 +89,7 @@ async def test_applications_management_crud():
         # 2. Create
         create_payload = {
             "name": "Test Staging Service",
-            "upstream_url": "http://staging.local:4000",
+            "upstream_url": "http://127.0.0.1:4000",
             "is_active": True,
             "detection_mode": "FLAG_ONLY",
             "rate_limit_requests": 150,

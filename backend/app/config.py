@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60, ge=1)
     RATE_LIMIT_BURST_ALLOWANCE: int = Field(default=20, ge=0)
 
-    # Safety Safeguards
+    # Safety Safeguards & Hardening
     MAX_REQUEST_BODY_SIZE: int = Field(
         default=10 * 1024 * 1024,  # 10MB
         description="Maximum request body size in bytes",
@@ -77,9 +77,23 @@ class Settings(BaseSettings):
         default=16 * 1024,  # 16KB
         description="Maximum total header size in bytes",
     )
+    MAX_URI_LENGTH: int = Field(
+        default=2048,
+        description="Maximum URI length in characters",
+    )
     REQUEST_TIMEOUT_SECONDS: float = Field(
         default=10.0,
         description="Timeout for upstream proxy requests in seconds",
+    )
+
+    # Security & Admin Authentication
+    ADMIN_API_KEY: str = Field(
+        default="ai-waf-admin-secure-key-change-me",
+        description="Admin API Key or Bearer Token required for management routes",
+    )
+    SSRF_PROTECTION_ENABLED: bool = True
+    ALLOWED_UPSTREAM_HOSTS: list[str] = Field(
+        default_factory=lambda: ["127.0.0.1", "localhost", "protected-demo-app", "upstream"]
     )
 
     # Machine Learning Models
