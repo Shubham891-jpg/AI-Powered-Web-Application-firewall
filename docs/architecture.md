@@ -130,4 +130,28 @@ EXPIRE waf:ratelimit:<ip> <ttl>
   - `X-RateLimit-Reset: <reset_timestamp>`
   - `X-WAF-Action: RATE_LIMITED`
 
+---
+
+## 9. Interactive Security Monitoring Dashboard (Phase 9)
+
+### 9.1 Dashboard Architecture
+The frontend is built with React, Vite, TypeScript, and TailwindCSS, communicating asynchronously with the AI-WAF REST API:
+- `GET /api/v1/security-events`: Filtered, paginated security audit trail.
+- `GET /api/v1/security-events/summary`: Real-time aggregated statistics (total requests, threat rate %, blocked attacks, avg latency, attack distribution).
+- `GET /api/v1/security-events/{id}`: Deep forensic explainability breakdown.
+- `GET /api/v1/applications` & `PATCH /api/v1/applications/{id}`: Protected upstream multi-tenant management.
+- `GET /api/v1/rules` & `PATCH /api/v1/rules/{rule_id}`: Dynamic rule status toggling and severity score tuning.
+
+### 9.2 Visualization & Forensic Telemetry
+1. **Threat Analytics Chart**:
+   - Real-time SVG traffic timeline detailing continuous request volume categorized by enforcement action (Allowed, Flagged, Blocked).
+   - Attack category distribution donut / progress breakdown (SQLi, XSS, RCE, Path Traversal, Rate Limit).
+2. **Interactive Security Events Table**:
+   - Live audit trail with search, action filtering (BLOCK, FLAG, ALLOW), category filtering, and risk score visual gauges.
+3. **Forensic Explainability Modal**:
+   - Deep inspection inspector revealing composite risk scores, supervised ML prediction confidence, deterministic rule matches, contextual threat penalties, and normalized payload comparisons.
+4. **Interactive Attack Simulator & Burst Flooder**:
+   - Direct live attack probe launcher equipped with pre-configured attack vectors (SQLi, XSS, RCE, Traversal, Normal, Burst flood) showing real-time response telemetry (`X-WAF-Action`, `X-WAF-Risk-Score`, latency).
+
+
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sliders, Shield, Terminal, FileCode, ChevronRight, CheckCircle } from 'lucide-react';
+import { Sliders, CheckCircle } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 
 export interface RuleItem {

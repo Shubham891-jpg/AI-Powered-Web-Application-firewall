@@ -5,12 +5,16 @@ API Router Aggregator for AI-WAF v1 Endpoints.
 from fastapi import APIRouter
 from app.api.health import router as health_router
 from app.api.security_events import router as events_router
+from app.api.applications import router as applications_router
+from app.api.rules import router as rules_router
 from app.config import settings
 
 api_v1_router = APIRouter(prefix="/api/v1")
 
 # Mount sub-routers
 api_v1_router.include_router(events_router)
+api_v1_router.include_router(applications_router)
+api_v1_router.include_router(rules_router)
 
 
 @api_v1_router.get("/config", tags=["Configuration"])

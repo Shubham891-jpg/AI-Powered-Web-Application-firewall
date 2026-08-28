@@ -11,7 +11,6 @@ export const TopologyView: React.FC<TopologyViewProps> = ({ health }) => {
   const upstream = health?.components.upstream;
   const redis = health?.components.redis;
   const database = health?.components.database;
-  const detection = health?.components.detection;
 
   return (
     <div className="glass-panel rounded-2xl p-6 relative overflow-hidden">

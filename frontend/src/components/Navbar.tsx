@@ -1,5 +1,4 @@
-import React from 'react';
-import { ShieldAlert, RefreshCw, Activity, Layers, Sliders, Cpu, Bell } from 'lucide-react';
+import { ShieldAlert, RefreshCw, Activity, Layers, Sliders, Server, Zap } from 'lucide-react';
 import { HealthData } from '../types/health';
 import { StatusBadge } from './StatusBadge';
 
@@ -21,8 +20,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems = [
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'events', label: 'Security Events', icon: ShieldAlert },
+    { id: 'simulator', label: 'Attack Simulator', icon: Zap },
+    { id: 'applications', label: 'Applications', icon: Server },
     { id: 'rules', label: 'Rule Engine', icon: Sliders },
-    { id: 'models', label: 'ML Models', icon: Cpu },
     { id: 'topology', label: 'Architecture', icon: Layers },
   ];
 
